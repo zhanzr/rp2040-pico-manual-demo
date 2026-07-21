@@ -55,6 +55,17 @@ PICOTOOL_PATH="D:/picotool/picotool.exe" cmake -G Ninja \
   -DPython3_EXECUTABLE="C:/msys64/mingw64/bin/python3.exe" \
   ..
 ```
+## use arm-none-eabi-gcc 15
+```
+PICOTOOL_PATH="D:/picotool/picotool.exe" cmake -G Ninja \
+  -DPICO_BOARD=pico \
+  -DPICO_SDK_PATH="D:/pico-sdk" \
+  -DCMAKE_TOOLCHAIN_FILE="D:/pico-sdk/cmake/preload/toolchains/pico_arm_cortex_m0plus_gcc.cmake" \
+  -DPICO_TOOLCHAIN_PATH="D:\Arm\GNU Toolchain mingw-w64-x86_64-arm-none-eabi\bin" \
+  -DCMAKE_MAKE_PROGRAM="C:/msys64/mingw64/bin/ninja.exe" \
+  -DPython3_EXECUTABLE="C:/msys64/mingw64/bin/python3.exe" \
+  ..
+```
 
 The build produces a `.uf2` file. Hold the **BOOTSEL** button on the Pico,
 connect USB, then copy the `.uf2` to the `RPI-RP2` drive.

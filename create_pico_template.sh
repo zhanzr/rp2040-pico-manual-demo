@@ -51,8 +51,9 @@ mkdir -p "${DST_DIR}"
 PROJECT_NAME="${PREFIX}_${NEXT}"
 SRC_BASE="${SRC_FILE%.c}"
 
-cp "${SCRIPT_DIR}/${SRC_DIR}/CMakeLists.txt" "${DST_DIR}/"
-cp "${SCRIPT_DIR}/${SRC_DIR}/${SRC_FILE}"    "${DST_DIR}/${PROJECT_NAME}.c"
+cp "${SCRIPT_DIR}/${SRC_DIR}/CMakeLists.txt"       "${DST_DIR}/"
+cp "${SCRIPT_DIR}/${SRC_DIR}/${SRC_FILE}"          "${DST_DIR}/${PROJECT_NAME}.c"
+cp "${SCRIPT_DIR}/${SRC_DIR}/pico_sdk_import.cmake" "${DST_DIR}/"
 
 if [[ -f "${SCRIPT_DIR}/${SRC_DIR}/README.md" ]]; then
     cp "${SCRIPT_DIR}/${SRC_DIR}/README.md" "${DST_DIR}/"
@@ -66,6 +67,55 @@ sed -i "s/target_link_libraries(${SRC_BASE}\b/target_link_libraries(${PROJECT_NA
 sed -i "s/${SRC_BASE}\\.elf/${PROJECT_NAME}.elf/g"                       "${DST_DIR}/CMakeLists.txt"
 sed -i "s/${SRC_BASE}\\.uf2/${PROJECT_NAME}.uf2/g"                       "${DST_DIR}/CMakeLists.txt"
 sed -i "s/TARGET ${SRC_BASE}\b/TARGET ${PROJECT_NAME} /"                 "${DST_DIR}/CMakeLists.txt"
+
+# ----- Append flash & clean-all custom targets to CMakeLists.txt --------
+cat >> "${DST_DIR}/CMakeLists.txt" << 'CUSTOM_EOF'
+
+# -------------------------------------------------------------------------
+# Custom target: flash — program the Pico via OpenOCD + CMSIS-DAP
+# -------------------------------------------------------------------------
+add_custom_target(flash
+    COMMAND openocd
+        -f interface/cmsis-dap.cfg
+        -c "adapter speed 10000"
+        -f target/rp2040.cfg
+        -c "cmsis_dap_backend usb_bulk"
+        -c "init; reset halt; program ${CMAKE_CURRENT_BINARY_DIR}/__PROJECT__.elf verify reset exit"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    COMMENT "Flashing __PROJECT__.elf to RP2040 via OpenOCD …"
+    USES_TERMINAL
+)
+
+# -------------------------------------------------------------------------
+# Custom target: clean-all — deep clean compiled objects and SDK files
+#   Removes all .o / .elf / .uf2 files and pico-sdk copies, but preserves
+#   CMakeCache.txt + build.ninja so you can rebuild immediately with ninja
+#   without re-supplying -D flags.
+# -------------------------------------------------------------------------
+add_custom_target(clean-all
+    COMMAND ${CMAKE_COMMAND} -E rm -rf
+        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/__PROJECT__.dir"
+        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/pkgRedirects"
+        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/CMakeScratch"
+        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/cmake.check_cache"
+        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/TargetDirectories.txt"
+        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/InstallScripts.json"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake_install.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        "${CMAKE_CURRENT_BINARY_DIR}/pico-sdk"
+        "${CMAKE_CURRENT_BINARY_DIR}/pioasm"
+        "${CMAKE_CURRENT_BINARY_DIR}/pioasm-install"
+        "${CMAKE_CURRENT_BINARY_DIR}/.ninja_log"
+        "${CMAKE_CURRENT_BINARY_DIR}/.ninja_deps"
+        "${CMAKE_CURRENT_BINARY_DIR}/__PROJECT__.elf"
+        "${CMAKE_CURRENT_BINARY_DIR}/__PROJECT__.uf2"
+    COMMAND ${CMAKE_COMMAND} -E echo "Deep clean done. Run 'ninja' to rebuild with cached configuration."
+    COMMENT "Removing all build artifacts (keeps CMakeCache.txt) …"
+    USES_TERMINAL
+)
+CUSTOM_EOF
+
+sed -i "s/__PROJECT__/${PROJECT_NAME}/g" "${DST_DIR}/CMakeLists.txt"
 
 echo "Done — template created at: ${DST_DIR}"
 echo ""
