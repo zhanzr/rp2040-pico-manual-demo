@@ -28,27 +28,58 @@ add_executable(coremark_200m
 
 target_link_libraries(coremark_200m pico_stdlib hardware_vreg)
 
-# Generate .uf2 using the picotool pre-built with mini_blink.
-set(PICOTOOL_EXE "D:/rp2040_vs_demo/mini_blink/build/_deps/picotool/picotool.exe")
-if(EXISTS "${PICOTOOL_EXE}")
-    add_custom_command(TARGET coremark_200m  POST_BUILD
-        COMMAND "${PICOTOOL_EXE}" uf2 convert coremark_200m.elf coremark_200m.uf2
+# -------------------------------------------------------------------------
+# Custom target: uf2 — generate .uf2 from .elf (explicit, not automatic)
+#   Run:  ninja uf2          # generates .uf2 for BOOTSEL-mode flashing
+#   Build only .elf: ninja   # default target; flash via: ninja flash
+# -------------------------------------------------------------------------
+find_program(PICOTOOL_BIN picotool
+    HINTS "$ENV{HOME}/tool/picotool" "$ENV{USERPROFILE}/tool/picotool"
+    DOC "picotool executable path")
+if(PICOTOOL_BIN)
+    add_custom_target(uf2
+        COMMAND "${PICOTOOL_BIN}" uf2 convert
+            "${CMAKE_CURRENT_BINARY_DIR}/coremark_200m.elf"
+            "${CMAKE_CURRENT_BINARY_DIR}/coremark_200m.uf2"
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-        COMMENT "Generating coremark_200m.uf2"
-        BYPRODUCTS coremark_200m.uf2
+        COMMENT "Generating coremark_200m.uf2 …"
+        DEPENDS coremark_200m
+        BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/coremark_200m.uf2"
     )
+else()
+    add_custom_target(uf2
+        COMMAND ${CMAKE_COMMAND} -E echo
+            "picotool not found — install picotool or set picotool_DIR")
 endif()
 
 # -------------------------------------------------------------------------
-# Custom target: flash — program the Pico via OpenOCD + CMSIS-DAP
+# Flashing configuration — set via cmake -D to match your debug probe.
+#
+# Interface examples:
+#   Picoprobe / CMSIS-DAP  (default — see OPENOCD_ADAPTER_ARGS below)
+#   J-Link:                -DOPENOCD_INTERFACE=jlink.cfg -DOPENOCD_ADAPTER_ARGS=
+#   ST-Link:               -DOPENOCD_INTERFACE=stlink.cfg -DOPENOCD_ADAPTER_ARGS=
+#
+# If usb_bulk doesn't find your probe, try HID auto-detect:
+#   cmake -DOPENOCD_ADAPTER_ARGS= ..
 # -------------------------------------------------------------------------
+set(OPENOCD_INTERFACE "interface/cmsis-dap.cfg" CACHE STRING
+    "OpenOCD interface config file")
+set(OPENOCD_ADAPTER_SPEED "5000" CACHE STRING
+    "OpenOCD SWD clock speed in kHz")
+set(OPENOCD_ADAPTER_ARGS "-c;cmsis_dap_backend usb_bulk" CACHE STRING
+    "Extra OpenOCD adapter arguments (semicolon-separated; empty for J-Link/HID)")
+
+# Custom target: flash — program the Pico via OpenOCD
 add_custom_target(flash
     COMMAND openocd
-        -f interface/cmsis-dap.cfg
-        -c "adapter speed 10000"
+        -f "${OPENOCD_INTERFACE}"
+        -c "adapter speed ${OPENOCD_ADAPTER_SPEED}"
         -f target/rp2040.cfg
-        -c "cmsis_dap_backend usb_bulk"
-        -c "init; reset halt; program ${CMAKE_CURRENT_BINARY_DIR}/coremark_200m.elf verify reset exit"
+        ${OPENOCD_ADAPTER_ARGS}
+        -c init
+        -c "reset halt"
+        -c "program ${CMAKE_CURRENT_BINARY_DIR}/coremark_200m.elf verify reset exit"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Flashing coremark_200m.elf to RP2040 via OpenOCD …"
     USES_TERMINAL
