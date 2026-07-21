@@ -8,8 +8,14 @@ set(CMAKE_C_STANDARD 11)
 pico_sdk_init()
 
 add_executable(hello_serial
-        hello_serial.c
-        )
+    hello_serial.c
+)
+
+# -------------------------------------------------------------------------
+# EXPLICITLY ENABLE UART STDIO
+# -------------------------------------------------------------------------
+pico_enable_stdio_uart(hello_serial 1)  # Enables GP0/GP1 UART output
+pico_enable_stdio_usb(hello_serial 0)   # Disables CDC USB output (optional)
 
 target_link_libraries(hello_serial pico_stdlib)
 

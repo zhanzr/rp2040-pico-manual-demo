@@ -1,4 +1,4 @@
-# RP2040 VS Demo
+# RP2040 manual building Demo
 
 A collection of RP2040 (Raspberry Pi Pico) firmware projects with a shared
 build toolchain, plus a template script for bootstrapping new projects.
@@ -43,6 +43,17 @@ cmake -G Ninja -DPICO_BOARD=pico -DPICO_SDK_PATH="D:/pico-sdk" \
       -DCMAKE_MAKE_PROGRAM="C:/msys64/mingw64/bin/ninja.exe" \
       -DPython3_EXECUTABLE="C:/msys64/mingw64/bin/python3.exe" ..
 ninja
+```
+## use an existing picotool
+```
+PICOTOOL_PATH="D:/picotool/picotool.exe" cmake -G Ninja \
+  -DPICO_BOARD=pico \
+  -DPICO_SDK_PATH="D:/pico-sdk" \
+  -DCMAKE_TOOLCHAIN_FILE="D:/pico-sdk/cmake/preload/toolchains/pico_arm_cortex_m0plus_gcc.cmake" \
+  -DPICO_TOOLCHAIN_PATH="D:/arm-gnu-toolchain/bin" \
+  -DCMAKE_MAKE_PROGRAM="C:/msys64/mingw64/bin/ninja.exe" \
+  -DPython3_EXECUTABLE="C:/msys64/mingw64/bin/python3.exe" \
+  ..
 ```
 
 The build produces a `.uf2` file. Hold the **BOOTSEL** button on the Pico,
