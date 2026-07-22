@@ -108,7 +108,7 @@ ninja mini_blink                     # this builds picotool from source
 cmake --install _deps/picotool-build --prefix $HOME/tool 2>/dev/null
 
 # 3. Add to your shell config (~/.bashrc or ~/.zshrc)
-echo 'export picotool_DIR="$HOME/tool/picotool"' >> ~/.zshrc
+echo 'export picotool_DIR="$HOME/tool/picotool"' >> ~/.bashrc
 ```
 
 After that, all future `cmake` runs will find the installed picotool instantly:
@@ -216,6 +216,18 @@ ls /dev/tty.usbmodem*
 
 screen /dev/tty.usbmodemXXXXX 115200
 ```
+Exit: Ctrl-A then k
+
+## Linux serial port terminal
+### using tio
+```bash
+ls /dev/ttyUSB* /dev/ttyACM* /dev/ttyS*
+ls: cannot access '/dev/ttyUSB*': No such file or directory
+ /dev/ttyACM0   /dev/ttyS0   /dev/ttyS1   /dev/ttyS2   /dev/ttyS3
+
+tio -b 115200 /dev/ttyACM0 
+```
+Exit: Ctrl-T then Q
 ---
 
 ## Notes
