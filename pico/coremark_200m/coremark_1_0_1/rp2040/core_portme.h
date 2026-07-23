@@ -53,15 +53,26 @@
 	Define to 1 if the platform has stdio.h and implements the printf function.
 */
 #ifndef HAS_PRINTF
-#define HAS_PRINTF 1
+#define HAS_PRINTF 0
 #endif
+/* Configuration : HAS_STDIO
+	Define to 1 if the platform has stdio.h.
+*/
+#ifndef HAS_STDIO
+#define HAS_STDIO 1
+#endif
+
+// Redirect ee_printf (used by all coremark sources) to our uart_printf
+// which outputs via UART1 (GP4 TX).
+void uart_printf(const char *fmt, ...);
+#define ee_printf uart_printf
 
 /* Configuration : CORE_TICKS
 	Define type of return from the timing functions.
  */
 #include <stdint.h>
 
-#define	FLAGS_STR	"-xc -std=c11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c -fno-rtti -funsigned-char -fshort-enums -fshort-wchar"
+#define	FLAGS_STR	"-Ofast -funroll-loops"
 #ifndef ITERATIONS
 #define ITERATIONS  4000
 #endif
@@ -84,7 +95,7 @@ typedef clock_t CORE_TICKS;
 #elif __IS_COMPILER_GCC__
 #define COMPILER_VERSION "GCC"__VERSION__
 #else
-#define COMPILER_VERSION "Please put compiler version here (e.g. gcc 4.1)"
+#define COMPILER_VERSION "GCC " __VERSION__
 #endif
 
 #endif

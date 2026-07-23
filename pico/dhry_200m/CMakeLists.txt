@@ -19,6 +19,10 @@ add_executable(dhry_200m
 
 target_link_libraries(dhry_200m pico_stdlib hardware_vreg)
 
+# Disable stdio backends — using raw UART API via utils.c
+pico_enable_stdio_uart(dhry_200m 0)
+pico_enable_stdio_usb(dhry_200m 0)
+
 # -------------------------------------------------------------------------
 # Custom target: uf2 — generate .uf2 from .elf (explicit, not automatic)
 #   Run:  ninja uf2          # generates .uf2 for BOOTSEL-mode flashing

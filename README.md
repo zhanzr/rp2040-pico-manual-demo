@@ -20,16 +20,23 @@ build toolchain, plus a template script for bootstrapping new projects.
 
 ## Projects
 
+All project sources live under `pico/`:
+
 | Project | Clock | Description |
 |---|---|---|
-| `mini_blink/` | 125 MHz | Minimal LED blinker (reference / sanity check) |
-| `hello_serial/` | 125 MHz | Prints system clock & tick count via UART0 (GP0/GP1) every 5 s, LED blinks at 1 Hz |
-| `hello_serial_200mhz/` | **200 MHz** | Same as above but overclocked (VREG 1.15 V + 200 MHz PLL) |
-| `coremark_200m/` | **200 MHz** | CoreMark benchmark (cached vs uncached XIP flash comparison) |
-| `dhry_200m/` | **200 MHz** | Dhrystone 2.1 benchmark (cached vs uncached XIP flash comparison) |
+| `pico/mini_blink/` | 125 MHz | Minimal LED blinker (reference / sanity check) |
+| `pico/hello_serial/` | **200 MHz** (default) / 125 MHz | Dual-UART demo — UART0 (GP0/GP1) for device comms, UART1 (GP4/GP5) for debug via `PRINTF()`. LED blinks at 1 Hz. |
+| `pico/coremark_200m/` | **200 MHz** | CoreMark benchmark (cached vs uncached XIP flash comparison) |
+| `pico/dhry_200m/` | **200 MHz** | Dhrystone 2.1 benchmark (cached vs uncached XIP flash comparison) |
 
-All UART projects use hardware UART0 on **GPIO0 (TX)** and **GPIO1 (RX)** at a
-configurable baudrate (default 115 200).
+The `hello_serial` project initialises **both UARTs** simultaneously:
+- **UART0** (GP0 TX, GP1 RX) — intended for talking to external devices
+  (e.g. ESP8285 WiFi module) via `u0_printf()`.
+- **UART1** (GP4 TX, GP5 RX) — debug/STDOUT output via `PRINTF()` (alias
+  for `u1_printf()`).
+
+Similarly, `coremark_200m` and `dhry_200m` now output to **UART1 on
+GP4/GP5** using the `PRINTF()` macro defined in their `utils.h`.
 
 ---
 
@@ -53,7 +60,7 @@ export PICO_SDK_PATH="$HOME/pico-sdk"
 export picotool_DIR="$HOME/tool/picotool"
 
 # Configure & build (produces .elf only)
-cd mini_blink
+cd pico/mini_blink
 mkdir build && cd build
 cmake -G Ninja ..
 ninja
@@ -68,7 +75,7 @@ ninja uf2
 ### Windows (MSYS2 MinGW64)
 
 ```bash
-cd mini_blink
+cd pico/mini_blink
 mkdir build && cd build
 cmake -G Ninja -DPICO_BOARD=pico -DPICO_SDK_PATH="D:/pico-sdk" ^
       -Dpicotool_DIR="D:/picotool" ^
@@ -99,7 +106,7 @@ Avoid this by installing picotool once, then pointing new projects to it.
 
 ```bash
 # 1. Build any project once (this compiles picotool from source)
-cd mini_blink
+cd pico/mini_blink
 mkdir build && cd build
 PICO_SDK_PATH=$HOME/pico-sdk cmake -G Ninja ..
 ninja mini_blink                     # this builds picotool from source
@@ -181,15 +188,11 @@ cmake -G Ninja -DOPENOCD_ADAPTER_ARGS= ..
 
 ## Template script
 
-Use `create_pico_template.sh` to bootstrap a new project from an existing
-template:
+Use `pico/create_template.sh` to bootstrap a new project from the
+`pico/hello_serial/` dual-UART template:
 
 ```bash
-# Normal (125 MHz) — copies from hello_serial/
-./create_pico_template.sh          # → creates template_1/
-
-# Overclocked (200 MHz) — copies from hello_serial_200mhz/
-./create_pico_template.sh 200mhz   # → creates template_200mhz_1/
+cd pico && bash create_template.sh   # → creates template_1/ in pico/
 ```
 
 The script automatically:
@@ -197,15 +200,30 @@ The script automatically:
 - Renames the `.c` file to match the project name
 - Updates `CMakeLists.txt` (project name, executable name, target names)
 
+The created project always defaults to **200 MHz** and always initialises
+both UART0 and UART1.  Edit the `.c` file to switch to 125 MHz.
+
 ---
 
 ## Pinout
 
+### `pico/hello_serial` (dual UART)
+
 | GPIO | Function | Signal |
 |---|---|---|
-| 0 | UART0 TX | Output (connect to external UART RX) |
-| 1 | UART0 RX | Input (connect to external UART TX) |
+| 0 | UART0 TX | Device comms (e.g. ESP8285) |
+| 1 | UART0 RX | Device comms |
+| 4 | UART1 TX | Debug output (`PRINTF`) |
+| 5 | UART1 RX | Debug input |
 | 25 (LED) | GPIO out | Onboard LED, blinks at 1 Hz |
+
+### Other projects
+
+| Project | Output port |
+|---|---|
+| `pico/mini_blink/` | (none — LED only) |
+| `pico/coremark_200m/` | UART1 (GP4 TX) via `PRINTF()` |
+| `pico/dhry_200m/` | UART1 (GP4 TX) via `PRINTF()` |
 
 
 ## MacOS serial port terminal
@@ -232,9 +250,12 @@ Exit: Ctrl-T then Q
 
 ## Notes
 
-- The SDK default for `stdio_init_all()` already routes `printf()` to UART0 on
-  GP0/GP1 at 115 200 baud — no extra UART initialisation needed.
-- Baudrate is configurable via the `UART_BAUDRATE` macro in each source file.
+- The merged `pico/hello_serial/` project initialises **both** UART0 (GP0/GP1)
+  and UART1 (GP4/GP5) using the raw hardware API (`uart_init` / `uart_puts`).
+  Use `u0_printf()` for UART0 (device comms) and `PRINTF()` / `u1_printf()`
+  for UART1 (debug output).
+- Baudrate is configurable via the `UART0_BAUDRATE` / `UART1_BAUDRATE` macros.
 - For 200 MHz operation the core voltage is raised to 1.15 V via
   `vreg_set_voltage()`. This is safe for the RP2040 but exceeds the 133 MHz
   rated maximum — use at your own discretion.
+- No USB CDC or stdio is used — raw UART hardware only.

@@ -12,12 +12,15 @@ add_executable(hello_serial
 )
 
 # -------------------------------------------------------------------------
-# EXPLICITLY ENABLE UART STDIO
+# STDIO BACKENDS — both disabled
+#
+# This project uses the raw hardware UART API (uart_init / uart_puts)
+# instead of stdio.  No printf(), no USB CDC.
 # -------------------------------------------------------------------------
-pico_enable_stdio_uart(hello_serial 1)  # Enables GP0/GP1 UART output
-pico_enable_stdio_usb(hello_serial 0)   # Disables CDC USB output (optional)
+pico_enable_stdio_uart(hello_serial 0)
+pico_enable_stdio_usb(hello_serial 0)
 
-target_link_libraries(hello_serial pico_stdlib)
+target_link_libraries(hello_serial pico_stdlib hardware_vreg)
 
 # -------------------------------------------------------------------------
 # Custom target: uf2 — generate .uf2 from .elf (explicit, not automatic)
