@@ -50,9 +50,9 @@ echo "Creating ${DST_DIR} …"
 echo "  UART0 on GP0/GP1 + UART1 on GP4/GP5 (dual UART)"
 mkdir -p "${DST_DIR}"
 
-# ----- Copy files (rename .c to match the new project) ------------------
+# ----- Copy files (the .c source is always named main.c) ----------------
 cp "${SRC_PATH}/CMakeLists.txt"          "${DST_DIR}/"
-cp "${SRC_PATH}/${SRC_FILE}"             "${DST_DIR}/${PROJECT_NAME}.c"
+cp "${SRC_PATH}/${SRC_FILE}"             "${DST_DIR}/main.c"
 cp "${SRC_PATH}/pico_sdk_import.cmake"   "${DST_DIR}/"
 
 if [[ -f "${SRC_PATH}/README.md" ]]; then
@@ -60,16 +60,18 @@ if [[ -f "${SRC_PATH}/README.md" ]]; then
 fi
 
 # ----- Update project/source names in CMakeLists.txt --------------------
-sed_inplace "s/project(hello_serial\b/project(${PROJECT_NAME}/"                "${DST_DIR}/CMakeLists.txt"
-sed_inplace "s/add_executable(hello_serial\b/add_executable(${PROJECT_NAME}/"  "${DST_DIR}/CMakeLists.txt"
-sed_inplace "s/hello_serial\\.c/${PROJECT_NAME}.c/g"                           "${DST_DIR}/CMakeLists.txt"
-sed_inplace "s/target_link_libraries(hello_serial\b/target_link_libraries(${PROJECT_NAME}/" "${DST_DIR}/CMakeLists.txt"
-sed_inplace "s/pico_enable_stdio_uart(hello_serial\b/pico_enable_stdio_uart(${PROJECT_NAME}/" "${DST_DIR}/CMakeLists.txt"
-sed_inplace "s/pico_enable_stdio_usb(hello_serial\b/pico_enable_stdio_usb(${PROJECT_NAME}/" "${DST_DIR}/CMakeLists.txt"
-sed_inplace "s/DEPENDS hello_serial\b/DEPENDS ${PROJECT_NAME}/"                "${DST_DIR}/CMakeLists.txt"
+# Note: \b (word boundary) is a GNU sed extension — not available on
+# macOS BSD sed.  Patterns avoid \b and rely on unique context instead.
+sed_inplace "s/project(hello_serial /project(${PROJECT_NAME} /"               "${DST_DIR}/CMakeLists.txt"
+sed_inplace "s/add_executable(hello_serial$/add_executable(${PROJECT_NAME}/"  "${DST_DIR}/CMakeLists.txt"
+sed_inplace "s/hello_serial\\.c/main.c/g"                                     "${DST_DIR}/CMakeLists.txt"
+sed_inplace "s/target_link_libraries(hello_serial /target_link_libraries(${PROJECT_NAME} /" "${DST_DIR}/CMakeLists.txt"
+sed_inplace "s/pico_enable_stdio_uart(hello_serial /pico_enable_stdio_uart(${PROJECT_NAME} /" "${DST_DIR}/CMakeLists.txt"
+sed_inplace "s/pico_enable_stdio_usb(hello_serial /pico_enable_stdio_usb(${PROJECT_NAME} /" "${DST_DIR}/CMakeLists.txt"
+sed_inplace "s/DEPENDS hello_serial$/DEPENDS ${PROJECT_NAME}/"                "${DST_DIR}/CMakeLists.txt"
 sed_inplace "s|CMakeFiles/hello_serial\\.dir|CMakeFiles/${PROJECT_NAME}.dir|g" "${DST_DIR}/CMakeLists.txt"
-sed_inplace "s/hello_serial\\.elf/${PROJECT_NAME}.elf/g"                       "${DST_DIR}/CMakeLists.txt"
-sed_inplace "s/hello_serial\\.uf2/${PROJECT_NAME}.uf2/g"                       "${DST_DIR}/CMakeLists.txt"
+sed_inplace "s/hello_serial\\.elf/${PROJECT_NAME}.elf/g"                      "${DST_DIR}/CMakeLists.txt"
+sed_inplace "s/hello_serial\\.uf2/${PROJECT_NAME}.uf2/g"                      "${DST_DIR}/CMakeLists.txt"
 
 echo ""
 echo "Done — template created at: ${DST_DIR}"
@@ -88,7 +90,8 @@ echo "  #   Optional (avoids picotool source build):"
 echo '  #     export picotool_DIR="$HOME/tool/picotool"'
 echo "  ninja                    # build .elf only (fast)"
 echo "  ninja uf2               # generate .uf2 (BOOTSEL-mode flash)"
-echo "  ninja flash             # flash via OpenOCD + SWD"
+echo "  ninja flash             # flash via probe-rs (default)"
+echo "  ninja flash-ocd         # flash via OpenOCD (fallback)"
 echo ""
 echo "  # Windows (MSYS2 MinGW64)"
 echo '  cmake -G Ninja -DPICO_SDK_PATH="D:/pico-sdk" ^'
@@ -99,5 +102,9 @@ echo '        -DCMAKE_MAKE_PROGRAM="C:/msys64/mingw64/bin/ninja.exe" ^'
 echo '        -DPython3_EXECUTABLE="C:/msys64/mingw64/bin/python3.exe" ..'
 echo "  ninja"
 echo ""
-echo "  # Hardware flash via OpenOCD (any OS)"
-echo "  ninja flash"
+echo "  # Hardware flash (any OS)"
+echo "  ninja flash              # probe-rs (default)"
+echo "  ninja flash-ocd          # OpenOCD  (fallback)"
+echo ""
+echo "  # Renaming this folder later?"
+echo "  #   sed -i '' 's/${PROJECT_NAME}/your_new_name/g' CMakeLists.txt"

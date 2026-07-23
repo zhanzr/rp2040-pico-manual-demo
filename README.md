@@ -9,12 +9,13 @@ build toolchain, plus a template script for bootstrapping new projects.
 
 | Tool | macOS / Linux | Windows |
 |---|---|---|
+| **probe-rs** | `brew install probe-rs-tools` | [Download from GitHub](https://github.com/probe-rs/probe-rs/releases) or `cargo install probe-rs-tools` |
 | **Pico SDK** | `$HOME/pico-sdk` (set `PICO_SDK_PATH`) | `D:/pico-sdk` (set `PICO_SDK_PATH`) |
 | **ARM GCC toolchain** | `arm-none-eabi-gcc` on PATH, or via e.g. `/Applications/ArmGNUToolchain/.../bin` | e.g. `D:/arm-gnu-toolchain/bin` |
 | **CMake** | ≥ 3.13 — `brew install cmake` / `apt install cmake` | Download from cmake.org |
 | **Ninja** | `brew install ninja` / `apt install ninja-build` | `C:/msys64/mingw64/bin/ninja.exe` |
 | **Python 3** | `python3` on PATH | `C:/msys64/mingw64/bin/python3.exe` |
-| **picotool** | Install once via `cmake --install` (see below) — then set `picotool_DIR` | Same |
+| **picotool** (optional) | Install once via `cmake --install` (see below) — then set `picotool_DIR` | Same |
 
 ---
 
@@ -46,9 +47,8 @@ GP4/GP5** using the `PRINTF()` macro defined in their `utils.h`.
 > auto-detects the ARM GCC toolchain if it is on your `PATH`.  
 > On Windows (MSYS2 MinGW64), you may need to supply all paths explicitly.
 >
-> **Picoprobe conflict:** If you have multiple CMSIS-DAP probes connected
-> (e.g. an old DAPLink v1), unplug the unused one — `usb_bulk` backend can
-> only bind to one device at a time.
+> Flashing requires **probe-rs** (`brew install probe-rs-tools` on macOS).
+> For unsupported probes, use `ninja flash-ocd` instead (requires OpenOCD).
 
 ### macOS / Linux
 
@@ -65,10 +65,13 @@ mkdir build && cd build
 cmake -G Ninja ..
 ninja
 
-# Flash via OpenOCD + SWD  (preferred)
+# Flash via probe-rs (default, recommended)
 ninja flash
 
-# Or generate .uf2 for BOOTSEL-mode flashing  (fallback)
+# Or flash via OpenOCD (fallback)
+ninja flash-ocd
+
+# Or generate .uf2 for BOOTSEL-mode flashing
 ninja uf2
 ```
 
@@ -85,8 +88,9 @@ cmake -G Ninja -DPICO_BOARD=pico -DPICO_SDK_PATH="D:/pico-sdk" ^
       -DPython3_EXECUTABLE="C:/msys64/mingw64/bin/python3.exe" ..
 ninja                    # build .elf only
 
-ninja flash              # flash via OpenOCD + SWD (preferred)
-ninja uf2                # or generate .uf2 for BOOTSEL mode (fallback)
+ninja flash              # flash via probe-rs (default)
+ninja flash-ocd          # flash via OpenOCD (fallback)
+ninja uf2                # generate .uf2 for BOOTSEL mode
 ```
 
 ### Manual UF2 flash (any OS)
@@ -97,7 +101,48 @@ drive.
 
 ---
 
-## Picotool setup (one-time)
+## probe-rs setup (one-time)
+
+[probe-rs](https://github.com/probe-rs/probe-rs) is the default flashing tool.
+It supports Picoprobe, Raspberry Pi Debug Probe, J-Link, ST-Link, and many more.
+
+### macOS
+
+```bash
+brew install probe-rs-tools
+```
+
+### Linux
+
+```bash
+# From source (requires Rust):
+cargo install probe-rs-tools
+
+# Or download a pre-built binary from:
+# https://github.com/probe-rs/probe-rs/releases
+```
+
+### Windows
+
+```bash
+# From source (requires Rust):
+cargo install probe-rs-tools
+
+# Or download the installer from:
+# https://github.com/probe-rs/probe-rs/releases
+```
+
+After installation, verify with:
+```bash
+probe-rs list    # should show your debug probe
+```
+
+> **Note:** probe-rs auto-detects your probe — no config files needed.
+> For unsupported probes, fall back to OpenOCD via `ninja flash-ocd`.
+
+---
+
+## Picotool setup (optional — for UF2 generation)
 
 The SDK builds picotool from source on every fresh `cmake` — this takes ~5 min.
 Avoid this by installing picotool once, then pointing new projects to it.
@@ -143,48 +188,51 @@ cmake -G Ninja -Dpicotool_DIR="D:/picotool" ..
 |---|---|
 | `ninja` | Build the project (default target — produces `.elf` only) |
 | `ninja uf2` | Explicitly generate `.uf2` for BOOTSEL-mode flashing |
-| `ninja flash` | Flash `.elf` to Pico via OpenOCD + SWD |
-| `ninja clean-all` | Deep clean — removes objects and SDK copies, keeps CMake cache |
+| `ninja flash` | Flash `.elf` to Pico via **probe-rs** (default) |
+| `ninja flash-ocd` | Flash `.elf` to Pico via **OpenOCD** (fallback) |
 | `ninja clean-all` | Deep clean — removes objects and SDK copies, keeps CMake cache |
 
 ---
 
 ## Flash configuration
 
-The `flash` target uses **cache variables** you can override with `cmake -D` to
-match your debug probe. The defaults work for **CMSIS-DAP** probes (including
-the Raspberry Pi Debug Probe).
+### probe-rs (default)
+
+[probe-rs](https://github.com/probe-rs/probe-rs) supports a wide range of
+debug probes out of the box — Picoprobe, Raspberry Pi Debug Probe,
+J-Link, ST-Link, etc.  No configuration needed:
+
+```bash
+ninja flash
+```
+
+### OpenOCD (fallback)
+
+For probes that probe-rs does not support, use `ninja flash-ocd`.  The
+OpenOCD interface is configurable via CMake cache variables:
 
 ```bash
 # CMSIS-DAP / Picoprobe (default) — works out of the box
-cmake -G Ninja ..
+ninja flash-ocd
 
-# J-Link (no usb_bulk argument needed)
+# J-Link
 cmake -G Ninja -DOPENOCD_INTERFACE=jlink.cfg -DOPENOCD_ADAPTER_ARGS= ..
+ninja flash-ocd
 
-# ST-Link (no usb_bulk argument needed)
+# ST-Link
 cmake -G Ninja -DOPENOCD_INTERFACE=stlink.cfg -DOPENOCD_ADAPTER_ARGS= ..
-
-# If usb_bulk backend doesn't find your probe, switch to HID auto-detect:
-cmake -G Ninja -DOPENOCD_ADAPTER_ARGS= ..
+ninja flash-ocd
 ```
 
 | Cache variable | Default | Description |
 |---|---|---|
 | `OPENOCD_INTERFACE` | `interface/cmsis-dap.cfg` | OpenOCD interface config file |
-| `OPENOCD_ADAPTER_SPEED` | `5000` | SWD clock speed in kHz (reduce if connection fails) |
-| `OPENOCD_ADAPTER_ARGS` | `-c;cmsis_dap_backend usb_bulk` | Extra OpenOCD `-c` args (semicolon-separated; empty/`-c;` for J-Link/ST-Link) |
+| `OPENOCD_ADAPTER_SPEED` | `5000` | SWD clock speed in kHz |
+| `OPENOCD_ADAPTER_ARGS` | `-c;cmsis_dap_backend usb_bulk` | Extra `-c` args (empty for J-Link/ST-Link) |
 
-> **Tip:** Once set, these values are cached in `CMakeCache.txt` — you only
-> need `-D` once. To change later, edit `CMakeCache.txt` or re-run with new
-> `-D` flags.
-
-> **Multiple CMSIS-DAP probes:** If you have more than one CMSIS-DAP device
-> connected simultaneously (e.g. a DAPLink v1 + Picoprobe), OpenOCD may fail
-> with `unable to find a matching CMSIS-DAP device`. Disconnect the unused
-> probe and try again.
-
----
+> **Tip:** Once set via `cmake -D`, these values are cached in
+> `CMakeCache.txt`.  To change later, edit `CMakeCache.txt` or re-run with
+> new `-D` flags.
 
 ## Template script
 
@@ -197,7 +245,21 @@ cd pico && bash create_template.sh   # → creates template_1/ in pico/
 
 The script automatically:
 - Picks the next unused number (`template_1`, `template_2`, …)
-- Renames the `.c` file to match the project name
+- Names the source file `main.c` — generic so the folder can be renamed
+- Sets the project name, executable name, and all CMake targets to match
+
+**Renaming a project folder after creation:**
+
+If you rename the folder (e.g. `template_1` → `esp8285_test`), you must
+also update every occurrence of the old project name in `CMakeLists.txt`
+(project, add_executable, target_link_libraries, pico_enable_stdio_*,
+DEPENDS, custom targets for flash, uf2, clean-all, elf, uf2, and the
+CMakeFiles/...dir path).  A quick way on macOS:
+
+```bash
+cd pico/esp8285_test
+sed -i '' 's/template_1/esp8285_test/g' CMakeLists.txt
+```
 - Updates `CMakeLists.txt` (project name, executable name, target names)
 
 The created project always defaults to **200 MHz** and always initialises
@@ -234,7 +296,8 @@ ls /dev/tty.usbmodem*
 
 screen /dev/tty.usbmodemXXXXX 115200
 ```
-Exit: Ctrl-A then k
+Exit: Ctrl-A then k, y
+Detach & reattach: Ctrl-A then D, screen -r
 
 ## Linux serial port terminal
 ### using tio

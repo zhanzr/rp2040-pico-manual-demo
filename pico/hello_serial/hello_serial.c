@@ -26,8 +26,9 @@
 #define UART0_BAUDRATE  115200
 #define UART1_BAUDRATE  115200
 
-/** Print buffer size */
-#define BUF_SIZE 128
+/** Print buffer size (256 covers most AT command responses).
+ *  Messages longer than this will be silently truncated. */
+#define BUF_SIZE 256
 
 // -------------------------------------------------------------------------
 // UART output helpers

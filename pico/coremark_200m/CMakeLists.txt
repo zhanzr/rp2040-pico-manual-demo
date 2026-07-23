@@ -57,16 +57,30 @@ else()
 endif()
 
 # -------------------------------------------------------------------------
-# Flashing configuration — set via cmake -D to match your debug probe.
+# Flashing — probe-rs (default) and OpenOCD (fallback)
 #
-# Interface examples:
-#   Picoprobe / CMSIS-DAP  (default — see OPENOCD_ADAPTER_ARGS below)
-#   J-Link:                -DOPENOCD_INTERFACE=jlink.cfg -DOPENOCD_ADAPTER_ARGS=
-#   ST-Link:               -DOPENOCD_INTERFACE=stlink.cfg -DOPENOCD_ADAPTER_ARGS=
+# Default (probe-rs):
+#   ninja flash
 #
-# If usb_bulk doesn't find your probe, try HID auto-detect:
-#   cmake -DOPENOCD_ADAPTER_ARGS= ..
+# Fallback (OpenOCD — for probes not supported by probe-rs):
+#   ninja flash-ocd
+#
+# Interface examples for OpenOCD:
+#   CMSIS-DAP / Picoprobe  (default)
+#   J-Link:                cmake -DOPENOCD_INTERFACE=jlink.cfg -DOPENOCD_ADAPTER_ARGS= ..
+#   ST-Link:               cmake -DOPENOCD_INTERFACE=stlink.cfg -DOPENOCD_ADAPTER_ARGS= ..
 # -------------------------------------------------------------------------
+
+# Custom target: flash — program the Pico via probe-rs
+add_custom_target(flash
+    COMMAND probe-rs download --chip RP2040
+            "${CMAKE_CURRENT_BINARY_DIR}/coremark_200m.elf"
+    COMMAND probe-rs reset --chip RP2040
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    COMMENT "Flashing coremark_200m.elf to RP2040 via probe-rs …"
+    USES_TERMINAL
+)
+
 set(OPENOCD_INTERFACE "interface/cmsis-dap.cfg" CACHE STRING
     "OpenOCD interface config file")
 set(OPENOCD_ADAPTER_SPEED "5000" CACHE STRING
@@ -74,8 +88,8 @@ set(OPENOCD_ADAPTER_SPEED "5000" CACHE STRING
 set(OPENOCD_ADAPTER_ARGS "-c;cmsis_dap_backend usb_bulk" CACHE STRING
     "Extra OpenOCD adapter arguments (semicolon-separated; empty for J-Link/HID)")
 
-# Custom target: flash — program the Pico via OpenOCD
-add_custom_target(flash
+# Custom target: flash-ocd — fallback using OpenOCD
+add_custom_target(flash-ocd
     COMMAND openocd
         -f "${OPENOCD_INTERFACE}"
         -c "adapter speed ${OPENOCD_ADAPTER_SPEED}"

@@ -2,26 +2,25 @@ cmake_minimum_required(VERSION 3.13)
 
 include(pico_sdk_import.cmake)
 
-project(dhry_200m C CXX ASM)
+project(esp8285_test C CXX ASM)
 set(CMAKE_C_STANDARD 11)
-
-# Most aggressive speed optimization flags
-add_compile_options(-Ofast -funroll-loops)
 
 pico_sdk_init()
 
-add_executable(dhry_200m
-        main.c
-        dhry_1.c
-        dhry_2.c
-        utils.c
-        )
+add_executable(esp8285_test
+    main.c
+)
 
-target_link_libraries(dhry_200m pico_stdlib hardware_vreg)
+# -------------------------------------------------------------------------
+# STDIO BACKENDS — both disabled
+#
+# This project uses the raw hardware UART API (uart_init / uart_puts)
+# instead of stdio.  No printf(), no USB CDC.
+# -------------------------------------------------------------------------
+pico_enable_stdio_uart(esp8285_test 0)
+pico_enable_stdio_usb(esp8285_test 0)
 
-# Disable stdio backends — using raw UART API via utils.c
-pico_enable_stdio_uart(dhry_200m 0)
-pico_enable_stdio_usb(dhry_200m 0)
+target_link_libraries(esp8285_test pico_stdlib hardware_vreg)
 
 # -------------------------------------------------------------------------
 # Custom target: uf2 — generate .uf2 from .elf (explicit, not automatic)
@@ -34,12 +33,12 @@ find_program(PICOTOOL_BIN picotool
 if(PICOTOOL_BIN)
     add_custom_target(uf2
         COMMAND "${PICOTOOL_BIN}" uf2 convert
-            "${CMAKE_CURRENT_BINARY_DIR}/dhry_200m.elf"
-            "${CMAKE_CURRENT_BINARY_DIR}/dhry_200m.uf2"
+            "${CMAKE_CURRENT_BINARY_DIR}/esp8285_test.elf"
+            "${CMAKE_CURRENT_BINARY_DIR}/esp8285_test.uf2"
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-        COMMENT "Generating dhry_200m.uf2 …"
-        DEPENDS dhry_200m
-        BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/dhry_200m.uf2"
+        COMMENT "Generating esp8285_test.uf2 …"
+        DEPENDS esp8285_test
+        BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/esp8285_test.uf2"
     )
 else()
     add_custom_target(uf2
@@ -65,10 +64,10 @@ endif()
 # Custom target: flash — program the Pico via probe-rs
 add_custom_target(flash
     COMMAND probe-rs download --chip RP2040
-            "${CMAKE_CURRENT_BINARY_DIR}/dhry_200m.elf"
+            "${CMAKE_CURRENT_BINARY_DIR}/esp8285_test.elf"
     COMMAND probe-rs reset --chip RP2040
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Flashing dhry_200m.elf to RP2040 via probe-rs …"
+    COMMENT "Flashing esp8285_test.elf to RP2040 via probe-rs …"
     USES_TERMINAL
 )
 
@@ -88,22 +87,18 @@ add_custom_target(flash-ocd
         ${OPENOCD_ADAPTER_ARGS}
         -c init
         -c "reset halt"
-        -c "program ${CMAKE_CURRENT_BINARY_DIR}/dhry_200m.elf verify reset exit"
+        -c "program ${CMAKE_CURRENT_BINARY_DIR}/esp8285_test.elf verify reset exit"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Flashing dhry_200m.elf to RP2040 via OpenOCD …"
+    COMMENT "Flashing esp8285_test.elf to RP2040 via OpenOCD …"
     USES_TERMINAL
 )
 
 # -------------------------------------------------------------------------
 # Custom target: clean-all — deep clean compiled objects and SDK files
-#   Removes all .o / .elf / .uf2 files and pico-sdk copies, but preserves
-#   CMakeCache.txt + build.ninja so you can rebuild immediately with `ninja`
-#   without re-supplying -D flags. To fully wipe + reconfigure, remove
-#   CMakeCache.txt manually and re-run cmake.
 # -------------------------------------------------------------------------
 add_custom_target(clean-all
     COMMAND ${CMAKE_COMMAND} -E rm -rf
-        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/dhry_200m.dir"
+        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/template_1.dir"
         "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/pkgRedirects"
         "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/CMakeScratch"
         "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/cmake.check_cache"
@@ -116,8 +111,8 @@ add_custom_target(clean-all
         "${CMAKE_CURRENT_BINARY_DIR}/pioasm-install"
         "${CMAKE_CURRENT_BINARY_DIR}/.ninja_log"
         "${CMAKE_CURRENT_BINARY_DIR}/.ninja_deps"
-        "${CMAKE_CURRENT_BINARY_DIR}/dhry_200m.elf"
-        "${CMAKE_CURRENT_BINARY_DIR}/dhry_200m.uf2"
+        "${CMAKE_CURRENT_BINARY_DIR}/template_1.elf"
+        "${CMAKE_CURRENT_BINARY_DIR}/template_1.uf2"
     COMMAND ${CMAKE_COMMAND} -E echo "Deep clean done. Run 'ninja' to rebuild with cached configuration."
     COMMENT "Removing all build artifacts (keeps CMakeCache.txt) …"
     USES_TERMINAL

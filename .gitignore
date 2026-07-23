@@ -28,6 +28,9 @@ install_manifest.txt
 *.map
 *.o
 *.d
+
+# --- WiFi credentials (user-specific, keep out of repo) ---
+wifi_config.h
 *.a
 
 # --- Python virtual environment ---
