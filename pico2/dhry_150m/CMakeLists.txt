@@ -2,8 +2,19 @@ cmake_minimum_required(VERSION 3.13)
 
 # Target platform & board — must be set BEFORE project() and
 # pico_sdk_import.cmake so the SDK selects the right toolchain.
-set(PICO_PLATFORM rp2350)
-set(PICO_BOARD   pico2)
+#
+#   ARM:    PICO_PLATFORM=rp2350          (default, uses arm-none-eabi-*)
+#   RISC-V: PICO_PLATFORM=rp2350-riscv    (uses riscv*-unknown-elf-*)
+#
+# When building for RISC-V you also need:
+#   -DPICO_GCC_TRIPLE=riscv64-unknown-elf
+#
+if(NOT DEFINED PICO_PLATFORM)
+    set(PICO_PLATFORM rp2350)
+endif()
+if(NOT DEFINED PICO_BOARD)
+    set(PICO_BOARD pico2)
+endif()
 
 include(pico_sdk_import.cmake)
 
@@ -67,11 +78,11 @@ endif()
 #   ST-Link:               cmake -DOPENOCD_INTERFACE=stlink.cfg -DOPENOCD_ADAPTER_ARGS= ..
 # -------------------------------------------------------------------------
 
-# Custom target: flash — program the Pico 2 via probe-rs
+# Custom target: flash — program the Pico 2 via probe-rs.
+# Uses --reset so it works for both ARM and RISC-V binaries.
 add_custom_target(flash
-    COMMAND probe-rs download --chip RP235x --speed 10000
+    COMMAND probe-rs download --chip RP235x --speed 10000 --reset
             "${CMAKE_CURRENT_BINARY_DIR}/dhry_150m.elf"
-    COMMAND probe-rs reset --chip RP235x
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Flashing dhry_150m.elf to RP2350 via probe-rs …"
     USES_TERMINAL

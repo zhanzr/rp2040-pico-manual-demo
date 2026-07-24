@@ -2,8 +2,19 @@ cmake_minimum_required(VERSION 3.13)
 
 # Target platform & board — must be set BEFORE project() and
 # pico_sdk_import.cmake so the SDK selects the right toolchain.
-set(PICO_PLATFORM rp2350)
-set(PICO_BOARD   pico2_w)
+#
+#   ARM:    PICO_PLATFORM=rp2350          (default, uses arm-none-eabi-*)
+#   RISC-V: PICO_PLATFORM=rp2350-riscv    (uses riscv*-unknown-elf-*)
+#
+# When building for RISC-V:
+#   -DPICO_GCC_TRIPLE=riscv64-unknown-elf
+#
+if(NOT DEFINED PICO_PLATFORM)
+    set(PICO_PLATFORM rp2350)
+endif()
+if(NOT DEFINED PICO_BOARD)
+    set(PICO_BOARD pico2_w)
+endif()
 
 include(pico_sdk_import.cmake)
 
@@ -23,8 +34,12 @@ add_executable(dhry_150m
         )
 target_include_directories(dhry_150m PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-# cyw43 library needed for the wireless-chip LED on Pico 2 W
-target_link_libraries(dhry_150m pico_stdlib hardware_vreg pico_cyw43_arch_lwip_poll)
+# cyw43 library needed for the wireless-chip LED on Pico 2 W (ARM only).
+# On RISC-V the CYW43 PIO SPI driver has issues, and the LED is cosmetic.
+if(NOT PICO_PLATFORM MATCHES "riscv")
+    list(APPEND DHY_LIBS pico_cyw43_arch_lwip_poll)
+endif()
+target_link_libraries(dhry_150m pico_stdlib hardware_vreg ${DHY_LIBS})
 
 # Disable stdio backends — using raw UART API via utils.c
 pico_enable_stdio_uart(dhry_150m 0)
@@ -69,11 +84,11 @@ endif()
 #   ST-Link:               cmake -DOPENOCD_INTERFACE=stlink.cfg -DOPENOCD_ADAPTER_ARGS= ..
 # -------------------------------------------------------------------------
 
-# Custom target: flash — program the Pico 2 W via probe-rs
+# Custom target: flash — program the Pico 2 W via probe-rs.
+# Uses --reset so it works for both ARM and RISC-V binaries.
 add_custom_target(flash
-    COMMAND probe-rs download --chip RP235x --speed 10000
+    COMMAND probe-rs download --chip RP235x --speed 10000 --reset
             "${CMAKE_CURRENT_BINARY_DIR}/dhry_150m.elf"
-    COMMAND probe-rs reset --chip RP235x
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Flashing dhry_150m.elf to RP2350 via probe-rs …"
     USES_TERMINAL

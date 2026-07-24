@@ -46,6 +46,7 @@ int main(void) {
     const uint32_t sys_clk_hz = clock_get_hz(clk_sys);
 
     PRINTF("RP2350 - Pico 2 board (150 MHz)\n");
+    PRINTF("CPU: %s @ %u MHz\n", CPU_ARCH, sys_clk_hz / 1000000);
     PRINTF("UART1 output on GP4/GP5 at 115200 baud\n");
     PRINTF("System clock: %u Hz (%u MHz)\n", sys_clk_hz,
            sys_clk_hz / 1000000);
