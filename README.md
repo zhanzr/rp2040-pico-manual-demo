@@ -1,7 +1,8 @@
-# RP2040 manual building Demo
+# RP2040 / RP2350 manual building Demo
 
-A collection of RP2040 (Raspberry Pi Pico) firmware projects with a shared
-build toolchain, plus a template script for bootstrapping new projects.
+A collection of firmware projects for **RP2040** (Raspberry Pi Pico) and
+**RP2350** (Raspberry Pi Pico 2) boards with a shared build toolchain,
+plus template scripts for bootstrapping new projects.
 
 ---
 
@@ -29,6 +30,18 @@ All project sources live under `pico/`:
 | `pico/hello_serial/` | **200 MHz** (default) / 125 MHz | Dual-UART demo — UART0 (GP0/GP1) for device comms, UART1 (GP4/GP5) for debug via `PRINTF()`. LED blinks at 1 Hz. |
 | `pico/coremark_200m/` | **200 MHz** | CoreMark benchmark (cached vs uncached XIP flash comparison) |
 | `pico/dhry_200m/` | **200 MHz** | Dhrystone 2.1 benchmark (cached vs uncached XIP flash comparison) |
+
+Projects for the **RP2350** (Pico 2) board live under `pico2/`:
+
+| Project | Clock | Description |
+|---|---|---|
+| `pico2/mini_blink/` | 150 MHz (SDK default) | Minimal LED blinker for Pico 2 (reference / sanity check; no explicit clock setting) |
+| `pico2/coremark_150m/` | **150 MHz** | CoreMark benchmark for RP2350 (cached vs uncached XIP flash comparison) |
+| `pico2/dhry_150m/` | **150 MHz** | Dhrystone 2.1 benchmark for RP2350 (cached vs uncached XIP flash comparison) |
+
+---
+
+### RP2040 details
 
 The `hello_serial` project initialises **both UARTs** simultaneously:
 - **UART0** (GP0 TX, GP1 RX) — intended for talking to external devices
@@ -160,7 +173,7 @@ ninja mini_blink                     # this builds picotool from source
 cmake --install _deps/picotool-build --prefix $HOME/tool 2>/dev/null
 
 # 3. Add to your shell config (~/.bashrc or ~/.zshrc)
-echo 'export picotool_DIR="$HOME/tool/picotool"' >> ~/.bashrc
+echo 'export picotool_DIR="$HOME/tool/picotool"' >> ~/.bash_profile
 ```
 
 After that, all future `cmake` runs will find the installed picotool instantly:

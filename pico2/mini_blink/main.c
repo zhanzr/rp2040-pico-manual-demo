@@ -1,11 +1,16 @@
 /**
  * \file main.c
- * \brief Minimal RP2040 toolchain / development verification template
+ * \brief Minimal RP2350 (Raspberry Pi Pico 2) board verification template
+ *
+ * Board:  Raspberry Pi Pico 2  (set PICO_BOARD=pico2, PICO_PLATFORM=rp2350)
  *
  * Purpose:
  *   - Confirms the build toolchain (cmake + arm-none-eabi-gcc) is functional.
  *   - Verifies the Pico SDK is correctly integrated.
- *   - Produces a .uf2 file ready to flash onto a Pico / Pico W board.
+ *   - Produces a .uf2 file ready to flash onto a Pico 2 board.
+ *
+ * Clock:
+ *   No explicit clock setting — runs at the Pico SDK default (150 MHz).
  *
  * Expected behaviour:
  *   The onboard LED blinks slowly (1 s on, 1 s off) to provide a clear
@@ -32,4 +37,3 @@ int main(void)
         sleep_ms(1000);
     }
 }
-
