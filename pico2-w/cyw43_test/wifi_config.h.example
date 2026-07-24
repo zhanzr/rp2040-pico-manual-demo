@@ -1,0 +1,18 @@
+/**
+ * \file wifi_config.h
+ * \brief WiFi credentials for the CYW43 wireless chip (Pico 2 W).
+ *
+ * Copy this file as wifi_config.h (no .example suffix) and fill in
+ * your AP name and password.  The .gitignore excludes wifi_config.h
+ * so your credentials stay private.
+ *
+ * If this file is missing the build will fail with a clear error.
+ */
+
+#ifndef WIFI_CONFIG_H
+#define WIFI_CONFIG_H
+
+#define DEFAULT_AP      "YourWiFiSSID"
+#define DEFAULT_PASSWD  "YourWiFiPassword"
+
+#endif

@@ -46,6 +46,7 @@ Projects for the **RP2350 (Pico 2 W)** board (onboard LED via CYW43 wireless chi
 | `pico2-w/mini_blink/` | 150 MHz (SDK default) | Minimal LED blinker for Pico 2 W (cyw43-based LED) |
 | `pico2-w/coremark_150m/` | **150 MHz** | CoreMark benchmark for Pico 2 W (cached vs uncached XIP) |
 | `pico2-w/dhry_150m/` | **150 MHz** | Dhrystone 2.1 benchmark for Pico 2 W (cached vs uncached XIP) |
+| `pico2-w/cyw43_test/` | **150 MHz** | CYW43 wireless chip test — scan APs, connect, print IP, blink LED |
 
 ---
 
