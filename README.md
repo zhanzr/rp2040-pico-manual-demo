@@ -13,6 +13,7 @@ plus template scripts for bootstrapping new projects.
 | **probe-rs** | `brew install probe-rs-tools` | [Download from GitHub](https://github.com/probe-rs/probe-rs/releases) or `cargo install probe-rs-tools` |
 | **Pico SDK** | `$HOME/pico-sdk` (set `PICO_SDK_PATH`) | `D:/pico-sdk` (set `PICO_SDK_PATH`) |
 | **ARM GCC toolchain** | `arm-none-eabi-gcc` on PATH, or via e.g. `/Applications/ArmGNUToolchain/.../bin` | e.g. `D:/arm-gnu-toolchain/bin` |
+| **RISC-V GCC toolchain** (optional — for RP2350 RISC-V builds) | `brew install riscv-gnu-toolchain` (macOS) / see *RISC-V toolchain* below (Linux) | See *RISC-V toolchain* below |
 | **CMake** | ≥ 3.13 — `brew install cmake` / `apt install cmake` | Download from cmake.org |
 | **Ninja** | `brew install ninja` / `apt install ninja-build` | `C:/msys64/mingw64/bin/ninja.exe` |
 | **Python 3** | `python3` on PATH | `C:/msys64/mingw64/bin/python3.exe` |
@@ -31,7 +32,9 @@ All project sources live under `pico/`:
 | `pico/coremark_200m/` | **200 MHz** | CoreMark benchmark (cached vs uncached XIP flash comparison) |
 | `pico/dhry_200m/` | **200 MHz** | Dhrystone 2.1 benchmark (cached vs uncached XIP flash comparison) |
 
-Projects for the **RP2350** (Pico 2) board live under `pico2/`:
+Projects for the **RP2350** (Pico 2) board live under `pico2/` — all support
+**both ARM Cortex-M33 and RISC-V Hazard3** architectures (see *Dual-architecture
+builds* below):
 
 | Project | Clock | Description |
 |---|---|---|
@@ -39,13 +42,15 @@ Projects for the **RP2350** (Pico 2) board live under `pico2/`:
 | `pico2/coremark_150m/` | **150 MHz** | CoreMark benchmark for RP2350 (cached vs uncached XIP flash comparison) |
 | `pico2/dhry_150m/` | **150 MHz** | Dhrystone 2.1 benchmark for RP2350 (cached vs uncached XIP flash comparison) |
 
-Projects for the **RP2350 (Pico 2 W)** board (onboard LED via CYW43 wireless chip) live under `pico2-w/`:
+Projects for the **RP2350 (Pico 2 W)** board (onboard LED via CYW43 wireless
+chip) live under `pico2-w/` — the benchmark projects also support **both
+ARM and RISC-V**:
 
 | Project | Clock | Description |
 |---|---|---|
 | `pico2-w/mini_blink/` | 150 MHz (SDK default) | Minimal LED blinker for Pico 2 W (cyw43-based LED) |
-| `pico2-w/coremark_150m/` | **150 MHz** | CoreMark benchmark for Pico 2 W (cached vs uncached XIP) |
-| `pico2-w/dhry_150m/` | **150 MHz** | Dhrystone 2.1 benchmark for Pico 2 W (cached vs uncached XIP) |
+| `pico2-w/coremark_150m/` | **150 MHz** | CoreMark benchmark for Pico 2 W (ARM + RISC-V) |
+| `pico2-w/dhry_150m/` | **150 MHz** | Dhrystone 2.1 benchmark for Pico 2 W (ARM + RISC-V) |
 | `pico2-w/cyw43_test/` | **150 MHz** | CYW43 wireless chip test — scan APs, connect, print IP, blink LED |
 
 ---
@@ -165,6 +170,88 @@ probe-rs list    # should show your debug probe
 
 > **Note:** probe-rs auto-detects your probe — no config files needed.
 > For unsupported probes, fall back to OpenOCD via `ninja flash-ocd`.
+
+---
+
+## Dual-architecture builds (ARM + RISC-V for RP2350)
+
+The RP2350 chip contains **two CPU cores**: an ARM Cortex-M33 and a RISC-V
+Hazard3.  The boot ROM reads the UF2 family ID and transparently transitions
+to the correct ISA — so the **same flash command** works for both builds.
+
+All `pico2/` and `pico2-w/` benchmark projects support building for either
+architecture.  Pick your CPU at cmake time; everything else (ninja, flash,
+clean-all) stays the same.
+
+At startup each program prints which CPU mode it is executing on, so you can
+compare identical benchmark code across the two ISAs on the same chip.
+
+### RISC-V GCC toolchain installation
+
+#### macOS
+
+```bash
+brew tap riscv-software-src/riscv
+brew trust riscv-software-src/riscv
+brew install riscv-gnu-toolchain
+riscv64-unknown-elf-gcc -print-multi-lib   # must list rv32imac/ilp32
+```
+
+#### Linux (Debian / Ubuntu)
+
+Check if your package manager provides a RISC-V GCC toolchain:
+```bash
+sudo apt install gcc-riscv64-unknown-elf
+riscv64-unknown-elf-gcc -print-multi-lib
+```
+
+If not available, download a pre-built toolchain from:
+- https://www.sifive.com/software (SiFive Freedom Studio)
+- https://github.com/riscv-collab/riscv-gnu-toolchain (build from source)
+- XPack: https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases
+
+#### Windows (MSYS2 MinGW64)
+
+```bash
+# Using MSYS2
+pacman -S mingw-w64-ucrt-x86_64-riscv64-unknown-elf-toolchain
+riscv64-unknown-elf-gcc -print-multi-lib
+```
+
+Alternatively, download a pre-built release from XPack:
+https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases
+
+### Build for ARM (default)
+
+```bash
+cd pico2/dhry_150m
+mkdir build && cd build
+PICO_SDK_PATH=$HOME/pico-sdk cmake -G Ninja ..
+ninja && ninja flash
+```
+
+### Build for RISC-V
+
+The only difference is two `-D` flags at cmake time:
+
+```bash
+cd pico2/dhry_150m
+mkdir build && cd build
+PICO_SDK_PATH=$HOME/pico-sdk cmake -G Ninja .. \
+    -DPICO_PLATFORM=rp2350-riscv \
+    -DPICO_GCC_TRIPLE=riscv64-unknown-elf
+ninja && ninja flash
+```
+
+> **Note — RISC-V debug limitation:** probe-rs connects via the ARM Debug Port.
+> Once RISC-V code is running, the ARM DP is locked and probe-rs cannot
+> reconnect.  To re-flash after RISC-V is already running, hold **BOOTSEL** +
+> press **RESET**, then use UF2 mode:
+> ```bash
+> picotool uf2 convert dhry_150m.elf dhry_150m.uf2
+> picotool load dhry_150m.uf2
+> picotool reboot
+> ```
 
 ---
 

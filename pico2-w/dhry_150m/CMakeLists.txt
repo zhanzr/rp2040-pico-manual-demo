@@ -34,12 +34,9 @@ add_executable(dhry_150m
         )
 target_include_directories(dhry_150m PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-# cyw43 library needed for the wireless-chip LED on Pico 2 W (ARM only).
-# On RISC-V the CYW43 PIO SPI driver has issues, and the LED is cosmetic.
-if(NOT PICO_PLATFORM MATCHES "riscv")
-    list(APPEND DHY_LIBS pico_cyw43_arch_lwip_poll)
-endif()
-target_link_libraries(dhry_150m pico_stdlib hardware_vreg ${DHY_LIBS})
+# No CYW43 wireless dependency — this is a pure Dhrystone benchmark.
+# The Pico 2 W LED is cosmetic and not needed for benchmarking.
+target_link_libraries(dhry_150m pico_stdlib hardware_vreg)
 
 # Disable stdio backends — using raw UART API via utils.c
 pico_enable_stdio_uart(dhry_150m 0)

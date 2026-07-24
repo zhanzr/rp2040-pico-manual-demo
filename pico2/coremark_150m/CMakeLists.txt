@@ -76,11 +76,10 @@ endif()
 #   ST-Link:               cmake -DOPENOCD_INTERFACE=stlink.cfg -DOPENOCD_ADAPTER_ARGS= ..
 # -------------------------------------------------------------------------
 
-# Custom target: flash — program the Pico 2 via probe-rs
+# Custom target: flash — program via probe-rs (--reset works for ARM + RISC-V)
 add_custom_target(flash
-    COMMAND probe-rs download --chip RP235x --speed 10000
+    COMMAND probe-rs download --chip RP235x --speed 10000 --reset
             "${CMAKE_CURRENT_BINARY_DIR}/coremark_150m.elf"
-    COMMAND probe-rs reset --chip RP235x
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Flashing coremark_150m.elf to RP2350 via probe-rs …"
     USES_TERMINAL

@@ -47,11 +47,6 @@ ninja flash-ocd  # fallback: flash via OpenOCD
 ninja clean-all  # deep clean
 ```
 
-> **Note — RISC-V uncached limitation:** The XIP uncached alias (`0x14000000`)
-> causes a bus fault on the RISC-V Hazard3 core. The cached test works fine;
-> the uncached test is skipped on RISC-V with a message. This is documented
-> in the source code in case a hardware workaround is found later.
->
 > **Note — RISC-V debug limitation:** probe-rs connects via the ARM Debug Port.
 > Once RISC-V code is running, the ARM DP is locked and probe-rs cannot
 > reconnect. To re-flash after RISC-V is already running, hold **BOOTSEL** +
