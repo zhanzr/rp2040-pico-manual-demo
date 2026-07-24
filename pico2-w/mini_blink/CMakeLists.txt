@@ -1,26 +1,46 @@
+#=============================================================================
+# Minimal RP2350 (Raspberry Pi Pico 2 W) board verification template
+#
+# Board:  Raspberry Pi Pico 2 W  (PICO_BOARD=pico2_w, PICO_PLATFORM=rp2350)
+#
+# Use this project to confirm that the CMake + ARM GCC toolchain is set up
+# correctly and the Pico SDK is integrated properly.  The SDK default
+# system clock is 150 MHz — no explicit clock-setting call is needed.
+#
+# NOTE:
+#   Pico 2 W uses the CYW43 wireless chip's GPIO for the onboard LED
+#   (not a regular GPIO).  The cyw43 driver must be initialised before
+#   the LED can be toggled.
+#
+# Building (from the build/ directory):
+#   cmake -G Ninja ..
+#   ninja                # produces mini_blink.elf
+#   ninja flash          # flash .elf via probe-rs + SWD
+#   ninja uf2            # generate .uf2 for BOOTSEL-mode flashing
+#=============================================================================
+
 cmake_minimum_required(VERSION 3.13)
 
+# 1. Target platform & board — must be set BEFORE project() and
+#    pico_sdk_import.cmake so the SDK selects the right toolchain.
+set(PICO_PLATFORM rp2350)
+set(PICO_BOARD   pico2_w)
+
+# 2. Include the SDK import helper (must come before the project() call).
 include(pico_sdk_import.cmake)
 
-project(hello_serial C CXX ASM)
+# 3. Declare the project — languages must be listed AFTER the import hook.
+project(mini_blink C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 
+# 4. Initialise SDK definitions & platform libraries.
 pico_sdk_init()
 
-add_executable(hello_serial
-    hello_serial.c
-)
-
-# -------------------------------------------------------------------------
-# STDIO BACKENDS — both disabled
-#
-# This project uses the raw hardware UART API (uart_init / uart_puts)
-# instead of stdio.  No printf(), no USB CDC.
-# -------------------------------------------------------------------------
-pico_enable_stdio_uart(hello_serial 0)
-pico_enable_stdio_usb(hello_serial 0)
-
-target_link_libraries(hello_serial pico_stdlib hardware_vreg)
+# 5. Define the executable and link the core SDK library.
+#    The cyw43 library is required for the wireless-chip LED on Pico 2 W.
+add_executable(mini_blink main.c)
+target_include_directories(mini_blink PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(mini_blink pico_stdlib pico_cyw43_arch_lwip_poll)
 
 # -------------------------------------------------------------------------
 # Custom target: uf2 — generate .uf2 from .elf (explicit, not automatic)
@@ -33,12 +53,12 @@ find_program(PICOTOOL_BIN picotool
 if(PICOTOOL_BIN)
     add_custom_target(uf2
         COMMAND "${PICOTOOL_BIN}" uf2 convert
-            "${CMAKE_CURRENT_BINARY_DIR}/hello_serial.elf"
-            "${CMAKE_CURRENT_BINARY_DIR}/hello_serial.uf2"
+            "${CMAKE_CURRENT_BINARY_DIR}/mini_blink.elf"
+            "${CMAKE_CURRENT_BINARY_DIR}/mini_blink.uf2"
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-        COMMENT "Generating hello_serial.uf2 …"
-        DEPENDS hello_serial
-        BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/hello_serial.uf2"
+        COMMENT "Generating mini_blink.uf2 …"
+        DEPENDS mini_blink
+        BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/mini_blink.uf2"
     )
 else()
     add_custom_target(uf2
@@ -61,13 +81,13 @@ endif()
 #   ST-Link:               cmake -DOPENOCD_INTERFACE=stlink.cfg -DOPENOCD_ADAPTER_ARGS= ..
 # -------------------------------------------------------------------------
 
-# Custom target: flash — program the Pico via probe-rs
+# Custom target: flash — program the Pico 2 W via probe-rs
 add_custom_target(flash
-    COMMAND probe-rs download --chip RP2040 --speed 10000
-            "${CMAKE_CURRENT_BINARY_DIR}/hello_serial.elf"
-    COMMAND probe-rs reset --chip RP2040
+    COMMAND probe-rs download --chip RP235x --speed 10000
+            "${CMAKE_CURRENT_BINARY_DIR}/mini_blink.elf"
+    COMMAND probe-rs reset --chip RP235x
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Flashing hello_serial.elf to RP2040 via probe-rs …"
+    COMMENT "Flashing mini_blink.elf to RP2350 via probe-rs …"
     USES_TERMINAL
 )
 
@@ -83,13 +103,13 @@ add_custom_target(flash-ocd
     COMMAND openocd
         -f "${OPENOCD_INTERFACE}"
         -c "adapter speed ${OPENOCD_ADAPTER_SPEED}"
-        -f target/rp2040.cfg
+        -f target/rp2350.cfg
         ${OPENOCD_ADAPTER_ARGS}
         -c init
         -c "reset halt"
-        -c "program ${CMAKE_CURRENT_BINARY_DIR}/hello_serial.elf verify reset exit"
+        -c "program ${CMAKE_CURRENT_BINARY_DIR}/mini_blink.elf verify reset exit"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Flashing hello_serial.elf to RP2040 via OpenOCD …"
+    COMMENT "Flashing mini_blink.elf to RP2350 via OpenOCD …"
     USES_TERMINAL
 )
 
@@ -98,7 +118,7 @@ add_custom_target(flash-ocd
 # -------------------------------------------------------------------------
 add_custom_target(clean-all
     COMMAND ${CMAKE_COMMAND} -E rm -rf
-        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/hello_serial.dir"
+        "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/mini_blink.dir"
         "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/pkgRedirects"
         "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/CMakeScratch"
         "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/cmake.check_cache"
@@ -111,8 +131,8 @@ add_custom_target(clean-all
         "${CMAKE_CURRENT_BINARY_DIR}/pioasm-install"
         "${CMAKE_CURRENT_BINARY_DIR}/.ninja_log"
         "${CMAKE_CURRENT_BINARY_DIR}/.ninja_deps"
-        "${CMAKE_CURRENT_BINARY_DIR}/hello_serial.elf"
-        "${CMAKE_CURRENT_BINARY_DIR}/hello_serial.uf2"
+        "${CMAKE_CURRENT_BINARY_DIR}/mini_blink.elf"
+        "${CMAKE_CURRENT_BINARY_DIR}/mini_blink.uf2"
     COMMAND ${CMAKE_COMMAND} -E echo "Deep clean done. Run 'ninja' to rebuild with cached configuration."
     COMMENT "Removing all build artifacts (keeps CMakeCache.txt) …"
     USES_TERMINAL

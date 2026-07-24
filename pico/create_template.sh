@@ -86,8 +86,9 @@ echo "  mkdir build && cd build"
 echo ""
 echo "  # macOS / Linux"
 echo "  PICO_SDK_PATH=/path/to/pico-sdk cmake -G Ninja .."
-echo "  #   Optional (avoids picotool source build):"
+echo "  #   Optional (avoids source builds):"
 echo '  #     export picotool_DIR="$HOME/tool/picotool"'
+echo '  #     export pioasm_DIR="$HOME/tool/pioasm/pioasm"'
 echo "  ninja                    # build .elf only (fast)"
 echo "  ninja uf2               # generate .uf2 (BOOTSEL-mode flash)"
 echo "  ninja flash             # flash via probe-rs (default)"

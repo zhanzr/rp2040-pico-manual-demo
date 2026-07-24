@@ -39,6 +39,14 @@ Projects for the **RP2350** (Pico 2) board live under `pico2/`:
 | `pico2/coremark_150m/` | **150 MHz** | CoreMark benchmark for RP2350 (cached vs uncached XIP flash comparison) |
 | `pico2/dhry_150m/` | **150 MHz** | Dhrystone 2.1 benchmark for RP2350 (cached vs uncached XIP flash comparison) |
 
+Projects for the **RP2350 (Pico 2 W)** board (onboard LED via CYW43 wireless chip) live under `pico2-w/`:
+
+| Project | Clock | Description |
+|---|---|---|
+| `pico2-w/mini_blink/` | 150 MHz (SDK default) | Minimal LED blinker for Pico 2 W (cyw43-based LED) |
+| `pico2-w/coremark_150m/` | **150 MHz** | CoreMark benchmark for Pico 2 W (cached vs uncached XIP) |
+| `pico2-w/dhry_150m/` | **150 MHz** | Dhrystone 2.1 benchmark for Pico 2 W (cached vs uncached XIP) |
+
 ---
 
 ### RP2040 details
@@ -62,6 +70,9 @@ GP4/GP5** using the `PRINTF()` macro defined in their `utils.h`.
 >
 > Flashing requires **probe-rs** (`brew install probe-rs-tools` on macOS).
 > For unsupported probes, use `ninja flash-ocd` instead (requires OpenOCD).
+>
+> **pioasm & picotool** are built from source on every fresh `cmake` run.
+> Build them **once** and reuse to save ~30 s per project (see below).
 
 ### macOS / Linux
 
@@ -69,8 +80,9 @@ GP4/GP5** using the `PRINTF()` macro defined in their `utils.h`.
 # Set once — add to your ~/.bashrc or ~/.zshrc
 export PICO_SDK_PATH="$HOME/pico-sdk"
 
-# Optional: point CMake to a pre-installed picotool (avoids source build)
+# Optional: pre-built tools avoid source builds on every fresh cmake
 export picotool_DIR="$HOME/tool/picotool"
+export pioasm_DIR="$HOME/tool/pioasm/pioasm"
 
 # Configure & build (produces .elf only)
 cd pico/mini_blink
@@ -195,6 +207,39 @@ cmake --install build/_deps/picotool-build --prefix "D:/picotool"
 cmake -G Ninja -Dpicotool_DIR="D:/picotool" ..
 ```
 
+---
+
+## Pioasm setup (optional — for PIO programs)
+
+The same principle applies to **pioasm** (the PIO assembler).  Without it, every
+fresh `cmake` run rebuilds pioasm (~30 s).  Install it once:
+
+### macOS / Linux
+
+```bash
+# 1. Build a project that uses PIO — this triggers the SDK to compile
+#    pioasm from source via ExternalProject_Add.  Pico 2 W projects
+#    with the CYW43 wireless chip always need PIO.
+cd pico2-w/mini_blink
+mkdir -p build && cd build
+PICO_SDK_PATH=$HOME/pico-sdk cmake -G Ninja ..
+ninja mini_blink                     # this also builds pioasm
+
+# 2. Copy the freshly-built pioasm to a permanent location
+mkdir -p "$HOME/tool"
+cp -r pioasm-install/pioasm "$HOME/tool/pioasm"
+
+# 3. Add to your shell config (~/.bashrc or ~/.zshrc)
+echo 'export pioasm_DIR="$HOME/tool/pioasm/pioasm"' >> ~/.bash_profile
+```
+
+After that, all future `cmake` runs skip the pioasm build:
+
+```bash
+PICO_SDK_PATH=$HOME/pico-sdk cmake -G Ninja .. -Dpioasm_DIR="$HOME/tool/pioasm/pioasm"
+ninja                                    # build .elf only (fast)
+```
+
 ### Available ninja targets
 
 | Command | Description |
@@ -209,7 +254,7 @@ cmake -G Ninja -Dpicotool_DIR="D:/picotool" ..
 
 ## Flash configuration
 
-### probe-rs (default)
+### probe-rs (default — **recommended**)
 
 [probe-rs](https://github.com/probe-rs/probe-rs) supports a wide range of
 debug probes out of the box — Picoprobe, Raspberry Pi Debug Probe,
@@ -219,10 +264,22 @@ J-Link, ST-Link, etc.  No configuration needed:
 ninja flash
 ```
 
-### OpenOCD (fallback)
+The `ninja flash` target uses **10 MHz SWD** (`--speed 10000`) for fast
+programming.  If your probe doesn't support 10 MHz, override on the command
+line or via CMake cache:
+
+```bash
+# Override for a single flash (e.g. 1 MHz)
+probe-rs download --chip RP2040 --speed 1000 path/to/firmware.elf
+
+# Or change the default in CMake cache
+cmake -DPROBE_RS_SPEED=1000 ..   # not yet supported — edit CMakeLists.txt
+```
+
+### OpenOCD (fallback — 5 MHz SWD)
 
 For probes that probe-rs does not support, use `ninja flash-ocd`.  The
-OpenOCD interface is configurable via CMake cache variables:
+OpenOCD interface runs at a more conservative **5 MHz** (`OPENOCD_ADAPTER_SPEED=5000`) and is configurable via CMake cache variables:
 
 ```bash
 # CMSIS-DAP / Picoprobe (default) — works out of the box

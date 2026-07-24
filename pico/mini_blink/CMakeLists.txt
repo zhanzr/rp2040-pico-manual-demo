@@ -68,7 +68,7 @@ endif()
 
 # Custom target: flash — program the Pico via probe-rs
 add_custom_target(flash
-    COMMAND probe-rs download --chip RP2040
+    COMMAND probe-rs download --chip RP2040 --speed 10000
             "${CMAKE_CURRENT_BINARY_DIR}/mini_blink.elf"
     COMMAND probe-rs reset --chip RP2040
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"

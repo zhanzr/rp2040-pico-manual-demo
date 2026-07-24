@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # --------------------------------------------------------------------------
-# create_pico2_template.sh — Create a new RP2350 (Pico 2) project from a
-#                            template.
+# create_pico2w_template.sh — Create a new RP2350 (Pico 2 W) project from a
+#                              template.
 #
 # The template sources from pico/hello_serial/ (dual-UART: UART0 on GP0/GP1,
-# UART1 on GP4/GP5) but targets the **RP2350** chip (Pico 2).  The created
-# project runs at **150 MHz** (max spec).
+# UART1 on GP4/GP5) but targets the **RP2350** chip (Pico 2 W).  The
+# created project runs at **150 MHz** (max spec).
 #
 # Usage:
 #   ./create_template.sh
@@ -71,7 +71,7 @@ sed_inplace "s|CMakeFiles/hello_serial\\.dir|CMakeFiles/${PROJECT_NAME}.dir|g" "
 sed_inplace "s/hello_serial\\.elf/${PROJECT_NAME}.elf/g"                      "${DST_DIR}/CMakeLists.txt"
 sed_inplace "s/hello_serial\\.uf2/${PROJECT_NAME}.uf2/g"                      "${DST_DIR}/CMakeLists.txt"
 
-# ----- Inject RP2350 platform & board settings -------------------------
+# ----- Inject RP2350 platform & Pico 2 W board settings -----------------
 python3 -c "
 import sys
 path = sys.argv[1]
@@ -80,7 +80,7 @@ with open(path) as f:
 content = content.replace('include(pico_sdk_import.cmake)', '''# 1. Target platform & board — must be set BEFORE project() and
 #    pico_sdk_import.cmake so the SDK selects the right toolchain.
 set(PICO_PLATFORM rp2350)
-set(PICO_BOARD   pico2)
+set(PICO_BOARD   pico2_w)
 
 # 2. Include the SDK import helper (must come before the project() call).
 include(pico_sdk_import.cmake)''', 1)
@@ -88,15 +88,15 @@ with open(path, 'w') as f:
     f.write(content)
 " "${DST_DIR}/CMakeLists.txt"
 
-# ----- Update chip references from RP2040 to RP2350 ---------------------
-sed_inplace "s/--chip RP2040/--chip RP235x/g"                              "${DST_DIR}/CMakeLists.txt"
+# ----- Update chip references from RP2040 to RP235x ---------------------
+sed_inplace "s/--chip RP2040/--chip RP235x/g"                               "${DST_DIR}/CMakeLists.txt"
 sed_inplace "s/target\/rp2040\.cfg/target\/rp2350.cfg/g"                     "${DST_DIR}/CMakeLists.txt"
 sed_inplace "s/RP2040/RP2350/g"                                              "${DST_DIR}/CMakeLists.txt"
 sed_inplace "s/Flashing hello_serial/Flashing ${PROJECT_NAME}/g"             "${DST_DIR}/CMakeLists.txt"
 
 echo ""
 echo "Done — template created at: ${DST_DIR}"
-echo "  Target chip: RP2350 (Pico 2)"
+echo "  Target chip: RP2350 (Pico 2 W)"
 echo "  Dual UART: UART0 (GP0/GP1) + UART1 (GP4/GP5)"
 echo "  System clock: 150 MHz (RP2350 max spec)"
 echo "  PRINTF(...) outputs to UART1 (GP4 TX)"

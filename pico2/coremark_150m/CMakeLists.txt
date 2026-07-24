@@ -78,7 +78,7 @@ endif()
 
 # Custom target: flash — program the Pico 2 via probe-rs
 add_custom_target(flash
-    COMMAND probe-rs download --chip RP235x
+    COMMAND probe-rs download --chip RP235x --speed 10000
             "${CMAKE_CURRENT_BINARY_DIR}/coremark_150m.elf"
     COMMAND probe-rs reset --chip RP235x
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
